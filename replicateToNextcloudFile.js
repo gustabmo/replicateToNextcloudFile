@@ -1,11 +1,14 @@
 /**
  * Google Apps Script to replicate specific tabs from the current spreadsheet to an existing Nextcloud file.
  * 
- * Overwrites an existing Nextcloud file with current sheet data.
+ * by Gustavo Exel guexel@gmail.com
+ * 
+ * Overwrites an existing Nextcloud file with google sheet data.
  * The Nextcloud share link and file ID will remain unchanged.
+ * See "How to use" at the end of this file for instructions.
  */
-function replicateToNextcloudFile() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function replicateToNextcloudFile(spreadheetId) {
+  const ss = SpreadsheetApp.openById(spreadheetId);
   const config = ss.getSheetByName("Config");
   
   // Get config values from column B
@@ -74,4 +77,21 @@ function replicateToNextcloudFile() {
     Logger.log("HTTP " + response.getResponseCode() + ": " + response.getContentText());
     throw new Error("Upload failed: HTTP " + response.getResponseCode() + " — check Logs for details.");
   }
+}
+
+
+
+// How to use:
+//
+// these functions should be added to the script of a spreadsheet that will be the "source" for the data to replicate to nextcloud. It will add a menu item to trigger the replication.
+// here, in a standalone script, they won't do anything, but they are included here for convenience.
+function replicateThisSheet () {
+  replicateToNextcloudFile.replicateToNextcloudFile(SpreadsheetApp.getActiveSpreadsheet().getSheetId());
+}
+
+function onOpen() {
+    SpreadsheetApp.getUi()
+    .createMenu("Replicate")
+    .addItem("To Nextcloud", "replicateThisSheet")
+    .addToUi();
 }
