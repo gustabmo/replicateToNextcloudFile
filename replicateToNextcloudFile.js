@@ -86,7 +86,7 @@ function replicateToNextcloudFile(spreadheetId) {
 // these functions should be added to the script of a spreadsheet that will be the "source" for the data to replicate to nextcloud. It will add a menu item to trigger the replication.
 // here, in a standalone script, they won't do anything, but they are included here for convenience.
 function replicateThisSheet () {
-  replicateToNextcloudFile.replicateToNextcloudFile(SpreadsheetApp.getActiveSpreadsheet().getSheetId());
+  replicateToNextcloudFile.replicateToNextcloudFile(SpreadsheetApp.getActiveSpreadsheet().getId());
 }
 
 function onOpen() {
