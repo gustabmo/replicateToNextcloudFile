@@ -33,41 +33,45 @@ function replicateToNextcloudFile(spreadheetId) {
   const tempId = tempSS.getId();
 
   tabsToSync.forEach(tabName => {
-    const sourceSheet = ss.getSheetByName(tabName);
 
+    const sourceSheet = ss.getSheetByName(tabName);
     if (!sourceSheet) return;
 
     const sourceRange = sourceSheet.getDataRange();
 
-    const numRows = sourceRange.getNumRows();
-    const numCols = sourceRange.getNumColumns();
+    const values = sourceRange.getDisplayValues();
 
-    // Create empty sheet
+    const numRows = values.length;
+    const numCols = values[0]?.length || 1;
+
+    // Create completely fresh sheet
     const targetSheet = tempSS.insertSheet(tabName);
 
-    // Resize if needed
-    if (targetSheet.getMaxRows() < numRows) {
-      targetSheet.insertRows(1, numRows - targetSheet.getMaxRows());
-    }
-
-    if (targetSheet.getMaxColumns() < numCols) {
-      targetSheet.insertColumns(1, numCols - targetSheet.getMaxColumns());
-    }
-
-    // VALUES ONLY
-    const values = sourceRange.getDisplayValues();
+    // Copy values only
     targetSheet
       .getRange(1, 1, numRows, numCols)
       .setValues(values);
 
-    // FORMATTING ONLY
-    sourceRange.copyFormatToRange(
-      targetSheet,
-      1,
-      numCols,
-      1,
-      numRows
-    );
+    // Copy basic formatting manually
+    const backgrounds = sourceRange.getBackgrounds();
+    const fontColors = sourceRange.getFontColors();
+    const fontWeights = sourceRange.getFontWeights();
+    const fontSizes = sourceRange.getFontSizes();
+    const horizontalAlignments = sourceRange.getHorizontalAlignments();
+    const verticalAlignments = sourceRange.getVerticalAlignments();
+    const numberFormats = sourceRange.getNumberFormats();
+    const wraps = sourceRange.getWrapStrategies();
+
+    const targetRange = targetSheet.getRange(1, 1, numRows, numCols);
+
+    targetRange.setBackgrounds(backgrounds);
+    targetRange.setFontColors(fontColors);
+    targetRange.setFontWeights(fontWeights);
+    targetRange.setFontSizes(fontSizes);
+    targetRange.setHorizontalAlignments(horizontalAlignments);
+    targetRange.setVerticalAlignments(verticalAlignments);
+    targetRange.setNumberFormats(numberFormats);
+    targetRange.setWrapStrategies(wraps);
 
     // Column widths
     for (let c = 1; c <= numCols; c++) {
