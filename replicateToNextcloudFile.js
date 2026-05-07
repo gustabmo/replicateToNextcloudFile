@@ -27,24 +27,66 @@ function replicateToNextcloudFile(spreadheetId) {
   }
 
   // 1. Create a temporary spreadsheet for a clean export (values/formatting only)
-  const tempSS = SpreadsheetApp.create("Temp_Export_replicate_"+Math.round(Math.random()*100000));
+  const tempSS = SpreadsheetApp.create("Temp_Export_replicateToNextcloudFile");
+  const defaultSheet = tempSS.getSheets()[0];
+  defaultSheet.setName("__TEMP_THIS_WILL_BE_DELETED__");
   const tempId = tempSS.getId();
 
   tabsToSync.forEach(tabName => {
     const sourceSheet = ss.getSheetByName(tabName);
-    if (sourceSheet) {
-      // copyTo on a Sheet works cross-spreadsheet and preserves formatting
-      const copiedSheet = sourceSheet.copyTo(tempSS);
-      copiedSheet.setName(tabName);
-      // Replace formulas with values within the same spreadsheet (copyTo cross-SS doesn't allow this)
-      const range = copiedSheet.getDataRange();
-      range.copyTo(range, {contentsOnly: true});
+
+    if (!sourceSheet) return;
+
+    const sourceRange = sourceSheet.getDataRange();
+
+    const numRows = sourceRange.getNumRows();
+    const numCols = sourceRange.getNumColumns();
+
+    // Create empty sheet
+    const targetSheet = tempSS.insertSheet(tabName);
+
+    // Resize if needed
+    if (targetSheet.getMaxRows() < numRows) {
+      targetSheet.insertRows(1, numRows - targetSheet.getMaxRows());
+    }
+
+    if (targetSheet.getMaxColumns() < numCols) {
+      targetSheet.insertColumns(1, numCols - targetSheet.getMaxColumns());
+    }
+
+    // VALUES ONLY
+    const values = sourceRange.getDisplayValues();
+    targetSheet
+      .getRange(1, 1, numRows, numCols)
+      .setValues(values);
+
+    // FORMATTING ONLY
+    sourceRange.copyFormatToRange(
+      targetSheet,
+      1,
+      numCols,
+      1,
+      numRows
+    );
+
+    // Column widths
+    for (let c = 1; c <= numCols; c++) {
+      targetSheet.setColumnWidth(
+        c,
+        sourceSheet.getColumnWidth(c)
+      );
+    }
+
+    // Row heights
+    for (let r = 1; r <= numRows; r++) {
+      targetSheet.setRowHeight(
+        r,
+        sourceSheet.getRowHeight(r)
+      );
     }
   });
 
-  // Cleanup: Remove the auto-generated "Sheet1" in the temp file
-  const defaultSheet = tempSS.getSheetByName("Sheet1");
-  if (defaultSheet) tempSS.deleteSheet(defaultSheet);
+  tempSS.deleteSheet(defaultSheet); // remove Sheet1 that is created by default
   SpreadsheetApp.flush();
 
   // 2. Export temp spreadsheet as an .xlsx blob
