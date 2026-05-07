@@ -38,60 +38,30 @@ function replicateToNextcloudFile(spreadheetId) {
     if (!sourceSheet) return;
 
     const sourceRange = sourceSheet.getDataRange();
-
     const values = sourceRange.getDisplayValues();
+    const formulas = sourceRange.getFormulas();
 
-    const numRows = values.length;
-    const numCols = values[0]?.length || 1;
+    const newSheet = tempSS.insertSheet(tabName);
 
-    // Create completely fresh sheet
-    const targetSheet = tempSS.insertSheet(tabName);
+    // Write values only (no formulas at all)
+    newSheet.getRange(1, 1, values.length, values[0].length).setValues(values);
 
-    // Copy values only
-    targetSheet
-      .getRange(1, 1, numRows, numCols)
-      .setValues(values);
+    // Remove problematic metadata
+    newSheet.clearConditionalFormatRules();
 
-    // Copy basic formatting manually
-    const backgrounds = sourceRange.getBackgrounds();
-    const fontColors = sourceRange.getFontColors();
-    const fontWeights = sourceRange.getFontWeights();
-    const fontSizes = sourceRange.getFontSizes();
-    const horizontalAlignments = sourceRange.getHorizontalAlignments();
-    const verticalAlignments = sourceRange.getVerticalAlignments();
-    const numberFormats = sourceRange.getNumberFormats();
-    const wraps = sourceRange.getWrapStrategies();
+    // Remove filters
+    const filter = newSheet.getFilter();
+    if (filter) filter.remove();
 
-    const targetRange = targetSheet.getRange(1, 1, numRows, numCols);
+    // Remove protections
+    newSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)
+      .forEach(p => p.remove());
 
-    targetRange.setBackgrounds(backgrounds);
-    targetRange.setFontColors(fontColors);
-    targetRange.setFontWeights(fontWeights);
-    targetRange.setFontSizes(fontSizes);
-    targetRange.setHorizontalAlignments(horizontalAlignments);
-    targetRange.setVerticalAlignments(verticalAlignments);
-    targetRange.setNumberFormats(numberFormats);
-    targetRange.setWrapStrategies(wraps);
-
-    // Column widths
-    for (let c = 1; c <= numCols; c++) {
-      targetSheet.setColumnWidth(
-        c,
-        sourceSheet.getColumnWidth(c)
-      );
-    }
-
-    // Row heights
-    for (let r = 1; r <= numRows; r++) {
-      targetSheet.setRowHeight(
-        r,
-        sourceSheet.getRowHeight(r)
-      );
-    }
+    newSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE)
+      .forEach(p => p.remove());
   });
 
   tempSS.deleteSheet(defaultSheet); // remove Sheet1 that is created by default
-  SpreadsheetApp.flush();
 
   // 2. Export temp spreadsheet as an .xlsx blob
   const exportUrl = `https://docs.google.com/spreadsheets/d/${tempId}/export?format=xlsx`;
