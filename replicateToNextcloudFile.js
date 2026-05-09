@@ -1,12 +1,11 @@
 /**
- * Google Apps Script to replicate specific tabs from the current spreadsheet to an existing Nextcloud file.
- * 
- * by Gustavo Exel guexel@gmail.com
- * 
- * Overwrites an existing Nextcloud file with google sheet data.
- * The Nextcloud share link and file ID will remain unchanged.
+ * Google Apps Script to overwrite an existing Nextcloud file with google sheet data from specific tabs
+ * Only values and formatting are replicated, no formulas, filters, protections or conditional formatting.
  * See "How to use" at the end of this file for instructions.
+ * 
+ * by Gustavo Exel guexel@gmail.com 2026-05-09
  */
+
 function replicateToNextcloudFile(spreadheetId) {
   const ss = SpreadsheetApp.openById(spreadheetId);
   const config = ss.getSheetByName("Config");
@@ -41,24 +40,12 @@ function replicateToNextcloudFile(spreadheetId) {
     const newSheet = sourceSheet.copyTo(tempSS).setName(tabName);
 
     const sourceRange = sourceSheet.getDataRange();
+    const values = sourceRange.getDisplayValues();
 
-    const formulas = sourceRange.getFormulas();
-    const displayValues = sourceRange.getDisplayValues();
+    // Write values only (no formulas at all)
+    newSheet.getRange(1, 1, values.length, values[0].length).setValues(values);
 
-    // Replace formulas with their displayed values
-    for (let r = 0; r < formulas.length; r++) {
-      for (let c = 0; c < formulas[r].length; c++) {
-
-        if (formulas[r][c]) {
-
-          newSheet
-            .getRange(r + 1, c + 1)
-            .setValue(displayValues[r][c]);
-        }
-      }
-    }
-
-    // Remove conditional formatting
+    // Remove problematic metadata
     newSheet.clearConditionalFormatRules();
 
     // Remove filters
@@ -108,11 +95,29 @@ function replicateToNextcloudFile(spreadheetId) {
 }
 
 
+/**
+ * How to use:
+ * 
+ * 1. Create a google apps script project with this file in it and call it "replicateToNextcloudFile" or whatever you like.
+ * 2. Create or locate a new google spreadsheet that will be the "source" of the data to replicate to nextcloud.
+ * 3. In that spreadsheet, create a tab named "Config" and fill in the following values in column B:
+ *    B1: WebDAV URL of the target Nextcloud file, e.g. https://nextcloud.example.com/remote.php/dav/files/username/path/to/file.xlsx
+ *    B2: Nextcloud username (or email)
+ *    B3: Nextcloud app password (you must create an app password in your Nextcloud account settings, your regular password will not work here)
+ *    B4: Comma-separated list of tab names to replicate, e.g. "Sheet1,Data,Summary"
+ * 4. In the same spreadsheet, open the Apps Script editor and copy the functions "replicateThisSheet" and "onOpen" from the end of this comment into the script editor of that spreadsheet.
+ * 5. In the Apps Script editor, go to "Resources" > "Libraries", and add the library with the project key of your "replicateToNextcloudFile" script project. Select the latest version and give it a short identifier (e.g. "replicateToNextcloudFile").
+ * 6. Save everything and reload the spreadsheet. You should see a new menu item "Replicate" with an option "To Nextcloud". Click it to start the replication.
+ * 7. Check your Nextcloud file to see if it has been updated with the data from the specified tabs. The file ID and share link should remain unchanged, only the content will be overwritten.
+ * 
+ * Note: This script only replicates values and formatting. Formulas, filters, protections and conditional formatting will not be replicated.
+ * The script creates a temporary spreadsheet to prepare the data for export, then exports it as an .xlsx file and uploads it to Nextcloud using a PUT request. Finally, it cleans up the temporary file.
+ * Make sure to handle your Nextcloud credentials securely and do not share the script with others if it contains sensitive information.
+ * 
+ * If you want to automate this process, you can set up a time-driven trigger in the Apps Script editor to run the "replicateThisSheet" function at regular intervals (e.g. daily).
+ * 
+ * For any issues or improvements, feel free to contact me at guexel@gmail.com
 
-// How to use:
-//
-// these functions should be added to the script of a spreadsheet that will be the "source" for the data to replicate to nextcloud. It will add a menu item to trigger the replication.
-// here, in a standalone script, they won't do anything, but they are included here for convenience.
 function replicateThisSheet () {
   replicateToNextcloudFile.replicateToNextcloudFile(SpreadsheetApp.getActiveSpreadsheet().getId());
 }
@@ -123,3 +128,8 @@ function onOpen() {
     .addItem("To Nextcloud", "replicateThisSheet")
     .addToUi();
 }
+
+*
+*
+*/
+
