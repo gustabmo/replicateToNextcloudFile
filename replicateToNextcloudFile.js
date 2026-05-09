@@ -37,16 +37,26 @@ function replicateToNextcloudFile(spreadheetId) {
     const sourceSheet = ss.getSheetByName(tabName);
     if (!sourceSheet) return;
 
-    // Copy entire sheet with all formatting/metadata
+    // Copy full sheet with formatting
     const newSheet = sourceSheet.copyTo(tempSS).setName(tabName);
 
-    const range = newSheet.getDataRange();
+    const sourceRange = sourceSheet.getDataRange();
 
-    // Replace formulas with displayed values
-    // while keeping formatting intact
-    range.copyTo(range, {
-      contentsOnly: true
-    });
+    const formulas = sourceRange.getFormulas();
+    const displayValues = sourceRange.getDisplayValues();
+
+    // Replace formulas with their displayed values
+    for (let r = 0; r < formulas.length; r++) {
+      for (let c = 0; c < formulas[r].length; c++) {
+
+        if (formulas[r][c]) {
+
+          newSheet
+            .getRange(r + 1, c + 1)
+            .setValue(displayValues[r][c]);
+        }
+      }
+    }
 
     // Remove conditional formatting
     newSheet.clearConditionalFormatRules();
